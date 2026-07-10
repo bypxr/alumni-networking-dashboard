@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alumni Networking Dashboard Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root{
+    --navy:#041E42;
+    --navy-2:#0B2D5C;
+    --navy-3:#153E77;
+    --bg:#E8EBF1;
+    --card:#FFFFFF;
+    --muted:#5B6B82;
+    --border:#D3D9E3;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--navy);}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px;}
+  .intro{margin-bottom:16px;}
+  .intro h1{font-family:'Oswald',sans-serif;font-size:22px;margin:0 0 4px;}
+  .intro p{font-size:13px;color:var(--muted);margin:0;}
+
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;}
+  .panel h4{margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-size:13px;}
+  .controls label{color:var(--muted);margin-right:6px;}
+  .controls .group{display:flex;align-items:center;gap:6px;}
+  button,input[type=file],select,input[type=number],input[type=text]{
+    font-family:inherit;font-size:13px;border:1px solid var(--border);border-radius:6px;
+    padding:6px 10px;background:#fff;color:var(--navy);
+  }
+  button{cursor:pointer;background:var(--navy);color:#fff;border:none;font-weight:600;}
+  button:hover{background:var(--navy-2);}
+  button.secondary{background:#fff;color:var(--navy);border:1px solid var(--border);font-weight:500;}
+  button.secondary:hover{background:#F2F4F8;}
+  .spacer{flex:1;}
+
+  .event-fields{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;}
+  .event-fields input[type=text]{flex:1;min-width:220px;}
+
+  .mapping{display:none;}
+  .mapping.show{display:block;}
+  .map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;}
+  .map-grid .field{display:flex;flex-direction:column;gap:3px;}
+  .map-grid .field span{font-size:12px;color:var(--muted);}
+  .map-grid select{width:100%;}
+
+  .board{background:var(--navy);border-radius:12px;padding:22px;}
+  .board-header{display:flex;align-items:center;gap:10px;color:#fff;padding:0 4px 18px;}
+  .board-header .shield{width:30px;height:30px;flex-shrink:0;}
+  .board-header h2{font-family:'Oswald',sans-serif;font-size:20px;font-weight:600;letter-spacing:.03em;margin:0;}
+  .board-header .sub{font-size:12px;color:#AFC0DA;margin-left:auto;}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .card{background:var(--card);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .card-head{background:var(--navy-3);padding:12px 14px;display:flex;gap:10px;align-items:center;}
+  .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;color:#fff;flex-shrink:0;
+    border:2px solid rgba(255,255,255,.35);overflow:hidden;}
+  .avatar img{width:100%;height:100%;object-fit:cover;}
+  .who{min-width:0;}
+  .who .nm{color:#fff;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .who .ti{color:#C7D5E8;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card-body{padding:12px 14px;display:flex;gap:10px;flex:1;}
+  .info{flex:1;min-width:0;}
+  .info .lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:600;margin:0 0 1px;}
+  .info .val{font-size:11.5px;color:var(--navy);margin:0;line-height:1.3;}
+  .qr{width:56px;height:56px;flex-shrink:0;}
+  .qr img{width:56px;height:56px;}
+
+  .pager{display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;margin-top:16px;font-size:12.5px;}
+  .pager button{padding:5px 10px;}
+  .empty{color:#C7D5E8;text-align:center;padding:40px 0;font-size:13px;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <h1>Alumni networking dashboard builder</h1>
+    <p>Upload a registration export, fix the column mapping if needed, then present live or export a standalone HTML file for the event TV.</p>
+  </div>
+
+  <div class="panel">
+    <h4>1. Registration file and event details</h4>
+    <div class="controls">
+      <div class="group">
+        <label for="file">File (xlsx or csv)</label>
+        <input type="file" id="file" accept=".xlsx,.xls,.csv">
+      </div>
+      <div class="spacer"></div>
+      <button class="secondary" id="loadSampleBtn">Load sample data</button>
+    </div>
+    <div class="event-fields">
+      <input type="text" id="eventTitle" value="PENN STATE ALUMNI NETWORKING" placeholder="Board title">
+      <input type="text" id="eventSub" value="" placeholder="Board subtitle (e.g. event name and venue)">
+    </div>
+  </div>
+
+  <div class="panel mapping" id="mapping">
+    <h4>2. Column mapping — fix anything that guessed wrong</h4>
+    <div class="map-grid" id="mapGrid"></div>
+    <div style="margin-top:12px;"><button id="applyMap">Apply and build board</button></div>
+  </div>
+
+  <div class="panel" id="displayControls" style="display:none;">
+    <h4>3. Display and export</h4>
+    <div class="controls">
+      <div class="group">
+        <label for="perPage">Cards / screen</label>
+        <select id="perPage">
+          <option value="6">6</option>
+          <option value="9" selected>9</option>
+          <option value="12">12</option>
+        </select>
+      </div>
+      <div class="group">
+        <label for="rotate">Auto-rotate</label>
+        <input type="checkbox" id="rotate">
+        <input type="number" id="interval" value="8" min="3" max="60" style="width:52px;">
+        <span style="color:var(--muted);">sec</span>
+      </div>
+      <div class="group">
+        <label for="search">Search</label>
+        <input type="text" id="search" placeholder="Name or expertise" style="width:150px;">
+      </div>
+      <div class="spacer"></div>
+      <button class="secondary" id="fullscreenBtn">Fullscreen</button>
+      <button id="exportBtn">Download standalone HTML</button>
+    </div>
+    <p class="hint">The downloaded file works offline — every QR code is baked in, no internet needed at the event.</p>
+  </div>
+
+  <div class="board" id="boardWrap" style="display:none;">
+    <div class="board-header">
+      <svg class="shield" viewBox="0 0 24 28" fill="none"><path d="M12 0L2 4v9c0 8 6.5 13 10 15 3.5-2 10-7 10-15V4L12 0z" fill="#fff"/><path d="M12 2L4 5v8c0 6.8 5.2 11 8 13 2.8-2 8-6.2 8-13V5L12 2z" fill="#041E42"/></svg>
+      <h2 id="boardTitle">PENN STATE ALUMNI NETWORKING</h2>
+      <span class="sub" id="boardSub"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="pager">
+      <button class="secondary" id="prevBtn">&larr; Prev</button>
+      <span id="pageLabel">Page 1 of 1</span>
+      <button class="secondary" id="nextBtn">Next &rarr;</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CANONICAL_FIELDS = {
+  name: {label:'Full name', match:['full name','name']},
+  title: {label:'Job title', match:['job title','title','role']},
+  company: {label:'Employer / company', match:['employer','company','organization']},
+  expertise: {label:'Area(s) of expertise', match:['expertise','skill','area']},
+  email: {label:'Email', match:['email']},
+  consent: {label:'Headshot consent (yes/no)', match:['comfortable sharing','headshot?','consent']},
+  headshot: {label:'Headshot link', match:['headshot','photo','picture']},
+  linkedin: {label:'LinkedIn URL (optional)', match:['linkedin']},
+};
+const AVATAR_COLORS = ['#153E77','#1E4D8C','#0B2D5C','#2C5EA0','#123566'];
+
+const SAMPLE_HEADERS = ["Timestamp","Email Address","Full Name","Employer / Company","Job Title","Area(s) of Expertise","Comfortable sharing headshot?","Headshot (Google Drive link)","How did you hear about this event?"];
+const SAMPLE_ROWS = [
+  ["2026-07-01 09:14:22","maria.chen88@gmail.com","Maria Chen","Booz Allen Hamilton","Senior Data Scientist","Machine learning, NLP, model deployment","Yes","https://drive.google.com/file/d/1a2B3c4D5e6F7g8H9i0J/view","Penn State DC's Newsletter"],
+  ["2026-07-01 11:02:05","j.okafor.psu@gmail.com","James Okafor","Capital One","Software Engineer II","Full-stack development, cloud architecture (AWS)","No","","Friend / Word of Mouth / Alumni"],
+  ["2026-07-02 08:41:37","priya.patel2015@outlook.com","Priya Patel","Deloitte Consulting","AI Strategy Consultant","AI governance, change management, data strategy","Yes","https://drive.google.com/file/d/2B3c4D5e6F7g8H9i0J1a/view","Penn State DC Social Media"],
+  ["2026-07-02 14:18:50","ebrooks.arch@gmail.com","Ethan Brooks","Gensler","Senior Architect","Urban design, sustainable materials","No","","Penn State DC Website"],
+  ["2026-07-03 10:05:11","sofia.ramirez@yahoo.com","Sofia Ramirez","Refraction Innovation Hub","Head of Partnerships","Startup ecosystems, community building, marketing","Yes","https://drive.google.com/file/d/3C4d5E6f7G8h9I0j1K2b/view","Other"],
+  ["2026-07-03 16:47:29","david.kim.psu@gmail.com","David Kim","Northrop Grumman","Investment & Corporate Development Analyst","Corporate finance, M&A, defense tech","No","","Friend / Word of Mouth / Alumni"],
+  ["2026-07-04 09:33:02","aisha.thompson19@gmail.com","Aisha Thompson","Accenture Federal Services","UX Designer","Product design, user research, applied AI tools","Yes","https://drive.google.com/file/d/4D5e6F7g8H9i0J1k2L3c/view","Penn State DC's Newsletter"],
+  ["2026-07-05 13:12:44","mtorres.civil@gmail.com","Michael Torres","WSP USA","Civil Engineer","Infrastructure planning, GIS, structural design","No","","Penn State DC Website"],
+  ["2026-07-06 07:58:19","grace.lin.psu@gmail.com","Grace Lin","McKinsey & Company","Business Analyst","Strategy, operations, AI adoption in enterprises","Yes","https://drive.google.com/file/d/5E6f7G8h9I0j1K2l3M4d/view","Friend / Word of Mouth / Alumni"],
+  ["2026-07-06 18:26:53","noah.fischer@gmail.com","Noah Fischer","Amazon Web Services","Solutions Architect","Cloud infrastructure, generative AI applications","Yes","https://drive.google.com/file/d/6F7g8H9i0J1k2L3m4N5e/view","Penn State DC Social Media"],
+  ["2026-07-07 12:04:37","hannah.reyes.psu@gmail.com","Hannah Reyes","Self-employed / Founder","Founder, EdTech Startup","Entrepreneurship, product-market fit, AI in education","No","","Other"],
+  ["2026-07-08 15:41:08","ryan.oconnell@gmail.com","Ryan O'Connell","U.S. Department of State","Foreign Affairs Officer","Policy analysis, tech diplomacy, AI governance","Yes","https://drive.google.com/file/d/7G8h9I0j1K2l3M4n5O6f/view","Penn State DC's Newsletter"]
+];
+
+let rawRows = null, rawHeaders = [];
+let people = [];
+let page = 0, perPage = 9, rotateTimer = null;
+
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
+function initials(name){
+  const parts = (name||'').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+function avatarColor(name){ return AVATAR_COLORS[hashStr(name||'') % AVATAR_COLORS.length]; }
+function isTruthy(v){ return ['yes','y','true','1'].includes(String(v||'').trim().toLowerCase()); }
+function driveDirectLink(url){
+  if(!url) return null;
+  const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? `https://drive.google.com/uc?export=view&id=${m[1]}` : url;
+}
+function makeVCard(name, company, title, email){
+  return `BEGIN:VCARD\nVERSION:3.0\nN:${name}\nFN:${name}\nORG:${company}\nTITLE:${title}\nEMAIL:${email}\nEND:VCARD`;
+}
+function qrDataUri(text){
+  const tmp = document.createElement('div');
+  tmp.style.display = 'none';
+  document.body.appendChild(tmp);
+  new QRCode(tmp, {text: text || ' ', width: 120, height: 120, colorDark:'#041E42', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M});
+  const canvas = tmp.querySelector('canvas');
+  const uri = canvas ? canvas.toDataURL('image/png') : '';
+  document.body.removeChild(tmp);
+  return uri;
+}
+
+function guessMapping(headers){
+  const mapping = {};
+  const used = new Set();
+  for(const key of Object.keys(CANONICAL_FIELDS)){
+    const cfg = CANONICAL_FIELDS[key];
+    let hit = '';
+    for(const h of headers){
+      if(used.has(h)) continue;
+      const hl = h.toLowerCase();
+      if(cfg.match.some(m => hl.includes(m))){ hit = h; break; }
+    }
+    if(hit) used.add(hit);
+    mapping[key] = hit;
+  }
+  return mapping;
+}
+
+function rowsFromSheet(headers, rows2d){
+  return rows2d.map(r => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = r[i]; });
+    return obj;
+  });
+}
+
+function showMappingUI(headers){
+  const guess = guessMapping(headers);
+  const container = document.getElementById('mapGrid');
+  container.innerHTML = '';
+  Object.keys(CANONICAL_FIELDS).forEach(key => {
+    const cfg = CANONICAL_FIELDS[key];
+    const wrap = document.createElement('div');
+    wrap.className = 'field';
+    const opts = ['<option value="">None</option>'].concat(
+      headers.map(h => `<option value="${h}" ${h===guess[key]?'selected':''}>${h}</option>`)
+    ).join('');
+    wrap.innerHTML = `<span>${cfg.label}</span><select data-key="${key}">${opts}</select>`;
+    container.appendChild(wrap);
+  });
+  document.getElementById('mapping').classList.add('show');
+}
+
+function loadRows(headers, rows){
+  rawHeaders = headers;
+  rawRows = rows;
+  showMappingUI(headers);
+}
+
+document.getElementById('file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+    if(!rows.length){ alert('No rows found in that file.'); return; }
+    loadRows(Object.keys(rows[0]), rows);
+    if(!document.getElementById('eventSub').value){
+      document.getElementById('eventSub').value = file.name;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('loadSampleBtn').addEventListener('click', () => {
+  loadRows(SAMPLE_HEADERS, rowsFromSheet(SAMPLE_HEADERS, SAMPLE_ROWS));
+  document.getElementById('eventSub').value = 'Sample roster';
+});
+
+document.getElementById('applyMap').addEventListener('click', () => {
+  if(!rawRows) return;
+  const selects = document.querySelectorAll('#mapGrid select');
+  const mapping = {};
+  selects.forEach(s => { mapping[s.dataset.key] = s.value; });
+
+  const get = (row, key) => {
+    const col = mapping[key];
+    if(!col) return '';
+    const v = row[col];
+    return (v === undefined || v === null) ? '' : String(v).trim();
+  };
+
+  people = rawRows.map(row => {
+    const name = get(row, 'name');
+    if(!name) return null;
+    const linkedin = get(row, 'linkedin');
+    const company = get(row, 'company');
+    const title = get(row, 'title');
+    const email = get(row, 'email');
+    const qrTarget = linkedin ? linkedin : makeVCard(name, company, title, email);
+    return {
+      name, title, company,
+      expertise: get(row, 'expertise'),
+      consent: isTruthy(get(row, 'consent')),
+      headshot: driveDirectLink(get(row, 'headshot')),
+      qr: qrDataUri(qrTarget),
+      initials: initials(name),
+      color: avatarColor(name),
+    };
+  }).filter(Boolean);
+
+  page = 0;
+  document.getElementById('displayControls').style.display = 'block';
+  document.getElementById('boardWrap').style.display = 'block';
+  renderBoard();
+  document.getElementById('boardWrap').scrollIntoView({behavior:'smooth'});
+});
+
+function filteredPeople(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if(!q) return people;
+  return people.filter(p => (p.name||'').toLowerCase().includes(q) || (p.expertise||'').toLowerCase().includes(q));
+}
+
+function renderBoard(){
+  document.getElementById('boardTitle').textContent = document.getElementById('eventTitle').value || 'ALUMNI NETWORKING';
+  document.getElementById('boardSub').textContent = document.getElementById('eventSub').value || '';
+
+  const list = filteredPeople();
+  const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+  if(page >= totalPages) page = totalPages - 1;
+  if(page < 0) page = 0;
+  const start = page * perPage;
+  const slice = list.slice(start, start + perPage);
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  if(!slice.length){
+    grid.innerHTML = '<div class="empty">No matching registrations.</div>';
+  } else {
+    slice.forEach(p => {
+      const avatarInner = (p.consent && p.headshot) ? `<img src="${p.headshot}" alt="">` : p.initials;
+      const titleLine = [p.title, p.company].filter(Boolean).join(' &middot; ');
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="card-head">
+          <div class="avatar" style="background:${p.color};">${avatarInner}</div>
+          <div class="who"><div class="nm">${p.name}</div><div class="ti">${titleLine}</div></div>
+        </div>
+        <div class="card-body">
+          <div class="info">
+            <p class="lbl">Areas of expertise</p>
+            <p class="val">${p.expertise || '&mdash;'}</p>
+          </div>
+          <div class="qr"><img src="${p.qr}" alt="QR code"></div>
+        </div>`;
+      grid.appendChild(card);
+    });
+  }
+  document.getElementById('pageLabel').textContent = `Page ${page+1} of ${totalPages}`;
+}
+
+document.getElementById('perPage').addEventListener('change', e => { perPage = parseInt(e.target.value,10); page = 0; renderBoard(); });
+document.getElementById('search').addEventListener('input', () => { page = 0; renderBoard(); });
+document.getElementById('prevBtn').addEventListener('click', () => { page--; renderBoard(); });
+document.getElementById('nextBtn').addEventListener('click', () => { page++; renderBoard(); });
+document.getElementById('eventTitle').addEventListener('input', renderBoard);
+document.getElementById('eventSub').addEventListener('input', renderBoard);
+
+document.getElementById('rotate').addEventListener('change', (e) => {
+  clearInterval(rotateTimer);
+  if(e.target.checked){
+    const secs = Math.max(3, parseInt(document.getElementById('interval').value, 10) || 8);
+    rotateTimer = setInterval(() => {
+      const list = filteredPeople();
+      const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+      page = (page + 1) % totalPages;
+      renderBoard();
+    }, secs * 1000);
+  }
+});
+document.getElementById('interval').addEventListener('change', () => {
+  document.getElementById('rotate').dispatchEvent(new Event('change'));
+});
+document.getElementById('fullscreenBtn').addEventListener('click', () => {
+  const el = document.getElementById('boardWrap');
+  if(el.requestFullscreen){ el.requestFullscreen().catch(()=>{}); }
+});
+
+const EXPORT_TEMPLATE = String.raw`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>__EVENT_TITLE__</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+  :root{--navy:#041E42;--navy-3:#153E77;--bg:#E8EBF1;--card:#fff;--muted:#5B6B82;--border:#D3D9E3;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--bg);color:var(--navy);}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px;}
+  .controls{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-size:13px;}
+  .controls label{color:var(--muted);margin-right:6px;}
+  button,select,input[type=text],input[type=number]{font-family:inherit;font-size:13px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;background:#fff;color:var(--navy);}
+  button{cursor:pointer;background:var(--navy);color:#fff;border:none;font-weight:600;}
+  button:hover{background:var(--navy-3);}
+  button.secondary{background:#fff;color:var(--navy);border:1px solid var(--border);}
+  .spacer{flex:1;}
+  .board{background:var(--navy);border-radius:12px;padding:22px;}
+  .board-header{display:flex;align-items:center;gap:10px;color:#fff;padding:0 4px 18px;}
+  .board-header h1{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;letter-spacing:.03em;margin:0;}
+  .board-header .sub{font-size:12px;color:#AFC0DA;margin-left:auto;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .card{background:var(--card);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .card-head{background:var(--navy-3);padding:12px 14px;display:flex;gap:10px;align-items:center;}
+  .avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:14px;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,.35);overflow:hidden;}
+  .avatar img{width:100%;height:100%;object-fit:cover;}
+  .who .nm{color:#fff;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .who .ti{color:#C7D5E8;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card-body{padding:12px 14px;display:flex;gap:10px;flex:1;}
+  .info{flex:1;min-width:0;}
+  .info .lbl{font-size:9.5px;color:var(--muted);text-transform:uppercase;font-weight:700;margin:0 0 1px;}
+  .info .val{font-size:11.5px;color:var(--navy);margin:0;line-height:1.3;}
+  .qr{width:56px;height:56px;flex-shrink:0;}
+  .qr img{width:56px;height:56px;}
+  .pager{display:flex;align-items:center;justify-content:center;gap:14px;color:#fff;margin-top:16px;font-size:12.5px;}
+  .pager button{padding:5px 10px;}
+  .empty{color:#C7D5E8;text-align:center;padding:40px 0;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="controls">
+    <div><label for="perPage">Cards / screen</label>
+      <select id="perPage"><option value="6">6</option><option value="9" selected>9</option><option value="12">12</option></select>
+    </div>
+    <div><label for="rotate">Auto-rotate</label>
+      <input type="checkbox" id="rotate">
+      <input type="number" id="interval" value="8" min="3" max="60" style="width:52px;"> sec
+    </div>
+    <div><label for="search">Search</label><input type="text" id="search" placeholder="Name or expertise" style="width:150px;"></div>
+    <div class="spacer"></div>
+    <button class="secondary" id="fullscreenBtn">Fullscreen</button>
+  </div>
+  <div class="board">
+    <div class="board-header">
+      <svg width="30" height="28" viewBox="0 0 24 28" fill="none"><path d="M12 0L2 4v9c0 8 6.5 13 10 15 3.5-2 10-7 10-15V4L12 0z" fill="#fff"/><path d="M12 2L4 5v8c0 6.8 5.2 11 8 13 2.8-2 8-6.2 8-13V5L12 2z" fill="#041E42"/></svg>
+      <h1>__EVENT_TITLE__</h1>
+      <span class="sub">__EVENT_SUB__</span>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="pager">
+      <button class="secondary" id="prevBtn">&larr; Prev</button>
+      <span id="pageLabel">Page 1 of 1</span>
+      <button class="secondary" id="nextBtn">Next &rarr;</button>
+    </div>
+  </div>
+</div>
+<script>
+const people = __PEOPLE_JSON__;
+let page = 0, perPage = 9, rotateTimer = null;
+function filteredPeople(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if(!q) return people;
+  return people.filter(p => (p.name||'').toLowerCase().includes(q) || (p.expertise||'').toLowerCase().includes(q));
+}
+function renderBoard(){
+  const list = filteredPeople();
+  const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+  if(page >= totalPages) page = totalPages - 1;
+  if(page < 0) page = 0;
+  const start = page * perPage;
+  const slice = list.slice(start, start + perPage);
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  if(!slice.length){
+    grid.innerHTML = '<div class="empty">No matching registrations.</div>';
+  } else {
+    slice.forEach(p => {
+      const avatarInner = (p.consent && p.headshot) ? '<img src="' + p.headshot + '" alt="">' : p.initials;
+      const titleLine = [p.title, p.company].filter(Boolean).join(' &middot; ');
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = '<div class="card-head"><div class="avatar" style="background:' + p.color + ';">' + avatarInner + '</div><div class="who"><div class="nm">' + p.name + '</div><div class="ti">' + titleLine + '</div></div></div><div class="card-body"><div class="info"><p class="lbl">Areas of expertise</p><p class="val">' + (p.expertise || '&mdash;') + '</p></div><div class="qr"><img src="' + p.qr + '" alt="QR code"></div></div>';
+      grid.appendChild(card);
+    });
+  }
+  document.getElementById('pageLabel').textContent = 'Page ' + (page+1) + ' of ' + totalPages;
+}
+document.getElementById('perPage').addEventListener('change', e => { perPage = parseInt(e.target.value,10); page = 0; renderBoard(); });
+document.getElementById('search').addEventListener('input', () => { page = 0; renderBoard(); });
+document.getElementById('prevBtn').addEventListener('click', () => { page--; renderBoard(); });
+document.getElementById('nextBtn').addEventListener('click', () => { page++; renderBoard(); });
+document.getElementById('rotate').addEventListener('change', e => {
+  clearInterval(rotateTimer);
+  if(e.target.checked){
+    const secs = Math.max(3, parseInt(document.getElementById('interval').value,10) || 8);
+    rotateTimer = setInterval(() => {
+      const list = filteredPeople();
+      const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+      page = (page + 1) % totalPages;
+      renderBoard();
+    }, secs * 1000);
+  }
+});
+document.getElementById('interval').addEventListener('change', () => { document.getElementById('rotate').dispatchEvent(new Event('change')); });
+document.getElementById('fullscreenBtn').addEventListener('click', () => {
+  const el = document.querySelector('.board');
+  if(el.requestFullscreen){ el.requestFullscreen().catch(()=>{}); }
+});
+perPage = parseInt(document.getElementById('perPage').value,10);
+renderBoard();
+<\/script>
+</body>
+</html>`;
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const title = document.getElementById('eventTitle').value || 'ALUMNI NETWORKING';
+  const sub = document.getElementById('eventSub').value || '';
+  const html = EXPORT_TEMPLATE
+    .replace('__EVENT_TITLE__', title)
+    .replace('__EVENT_TITLE__', title)
+    .replace('__EVENT_SUB__', sub)
+    .replace('__PEOPLE_JSON__', JSON.stringify(people));
+  const blob = new Blob([html], {type: 'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (title.toLowerCase().replace(/[^a-z0-9]+/g, '_') || 'alumni_board') + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>

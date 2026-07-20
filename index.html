@@ -142,7 +142,7 @@
   font-size:min(13cqh, 5.4cqw);   /* everything below is em-relative to this */
 }
 .avatar{
-  width:2.5em; height:2.5em;
+  width:min(38cqh, 14cqw); height:min(38cqh, 14cqw);
   border-radius:50%;
   flex:0 0 auto;
   overflow:hidden;
@@ -150,7 +150,7 @@
   color:#fff;
   font-family:'Oswald',sans-serif;
   font-weight:600;
-  font-size:.92em;
+  font-size:min(14cqh, 5.2cqw);
   border:1px solid rgba(255,255,255,.4);
 }
 .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
@@ -191,7 +191,7 @@
   display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
   overflow:hidden; word-break:break-word;
 }
-.qr{ flex:0 0 auto; width:min(64cqh, 24cqw); height:min(64cqh, 24cqw); }
+.qr{ flex:0 0 auto; width:min(30cqh, 11cqw); height:min(30cqh, 11cqw); }
 .qr img{ width:100%; height:100%; display:block; }
 
 .empty{ color:#C7D5E8; text-align:center; padding:40px 0; font-size:13px; }
@@ -417,7 +417,7 @@ var BOARD_CSS = String.raw`/* ---- shared board styles (used by the builder prev
   font-size:min(13cqh, 5.4cqw);   /* everything below is em-relative to this */
 }
 .avatar{
-  width:2.5em; height:2.5em;
+  width:min(38cqh, 14cqw); height:min(38cqh, 14cqw);
   border-radius:50%;
   flex:0 0 auto;
   overflow:hidden;
@@ -425,7 +425,7 @@ var BOARD_CSS = String.raw`/* ---- shared board styles (used by the builder prev
   color:#fff;
   font-family:'Oswald',sans-serif;
   font-weight:600;
-  font-size:.92em;
+  font-size:min(14cqh, 5.2cqw);
   border:1px solid rgba(255,255,255,.4);
 }
 .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
@@ -466,7 +466,7 @@ var BOARD_CSS = String.raw`/* ---- shared board styles (used by the builder prev
   display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
   overflow:hidden; word-break:break-word;
 }
-.qr{ flex:0 0 auto; width:min(64cqh, 24cqw); height:min(64cqh, 24cqw); }
+.qr{ flex:0 0 auto; width:min(30cqh, 11cqw); height:min(30cqh, 11cqw); }
 .qr img{ width:100%; height:100%; display:block; }
 
 .empty{ color:#C7D5E8; text-align:center; padding:40px 0; font-size:13px; }
@@ -822,9 +822,13 @@ function driveDirectLink(url){
   var m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
   return m ? 'https://drive.google.com/uc?export=view&id=' + m[1] : url;
 }
+function truncate(s, max){
+  s = String(s || '');
+  return s.length > max ? s.slice(0, max - 1) + '\u2026' : s;
+}
 function makeVCard(name, company, title, email){
-  return 'BEGIN:VCARD\nVERSION:3.0\nN:' + name + '\nFN:' + name +
-         '\nORG:' + company + '\nTITLE:' + title + '\nEMAIL:' + email + '\nEND:VCARD';
+  return 'BEGIN:VCARD\nVERSION:3.0\nN:' + truncate(name, 60) + '\nFN:' + truncate(name, 60) +
+         '\nORG:' + truncate(company, 45) + '\nTITLE:' + truncate(title, 45) + '\nEMAIL:' + email + '\nEND:VCARD';
 }
 function qrDataUri(text){
   var tmp = document.createElement('div');
@@ -833,7 +837,7 @@ function qrDataUri(text){
   var uri = '';
   try{
     new QRCode(tmp, {text: text || ' ', width: 220, height: 220,
-      colorDark: '#001E44', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M});
+      colorDark: '#001E44', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.L});
     var canvas = tmp.querySelector('canvas');
     if(canvas) uri = canvas.toDataURL('image/png');
   } catch(e){ uri = ''; }
